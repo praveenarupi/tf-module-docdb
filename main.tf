@@ -7,6 +7,7 @@ resource "aws_docdb_cluster" "main" {
   skip_final_snapshot = true
   db_subnet_group_name = aws_docdb_subnet_group.main.name
   db_cluster_parameter_group_name = aws_docdb_cluster_parameter_group.main.name
+  vpc_security_group_ids = [aws_security_group.main.id]
 }
 
 resource "aws_docdb_subnet_group" "main" {
@@ -23,7 +24,7 @@ resource "aws_docdb_cluster_parameter_group" "main" {
   description = "${var.env}-docdb"
 }
 
-resource "aws_security_group" "docdb" {
+resource "aws_security_group" "main" {
   name        = "${var.env}-docdb"
   description = "${var.env}-docdb"
   vpc_id      = var.vpc_id
@@ -33,42 +34,9 @@ resource "aws_security_group" "docdb" {
     from_port   = 27017
     to_port     = 27017
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr_block, var.WORKSTATION_IP]
+    cidr_blocks = [var.vpc_cidr_block]
   }
   tags = {
     Name = "${var.env}-docdb"
   }
-}
-
-resource "null_resource" "mongodb-schema-apply" {
-  depends_on = [aws_docdb_cluster.main, aws_docdb_cluster_instance.cluster_instances]
-  provisioner "local-exec" {
-    command = <<EOF
-curl -s -L -o /tmp/mongodb.zip "https://github.com/roboshop-devops-project/mongodb/archive/main.zip"
-cd /tmp
-unzip -o mongodb.zip
-cd mongodb-main
-curl -L -O https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem
-mongo --ssl --host ${aws_docdb_cluster.main.endpoint}:27017 --sslCAFile rds-combined-ca-bundle.pem --username ${local.username} --password ${local.password} <catalogue.js
-mongo --ssl --host ${aws_docdb_cluster.main.endpoint}:27017 --sslCAFile rds-combined-ca-bundle.pem --username ${local.username} --password ${local.password} <users.js
-EOF
-  }
-}
-
-resource "aws_ssm_parameter" "docdb-url-catalogue" {
-  name  = "immutable.docdb.catalogue.${var.env}.MONGO_URL"
-  type  = "String"
-  value = "mongodb://${local.username}:${local.password}@${aws_docdb_cluster.main.endpoint}:27017/catalogue?tls=true&replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false"
-}
-
-resource "aws_ssm_parameter" "docdb-url-users" {
-  name  = "immutable.docdb.user.${var.env}.MONGO_URL"
-  type  = "String"
-  value = "mongodb://${local.username}:${local.password}@${aws_docdb_cluster.main.endpoint}:27017/users?tls=true&replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false"
-}
-
-resource "aws_ssm_parameter" "docdb-endpoint" {
-  name  = "immutable.docdb.endpoint"
-  type  = "String"
-  value = aws_docdb_cluster.main.endpoint
 }
