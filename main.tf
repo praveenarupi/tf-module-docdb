@@ -12,7 +12,7 @@ resource "aws_docdb_cluster" "main" {
 
 resource "aws_docdb_subnet_group" "main" {
   name = "${var.env}-docdb"
-  subnet_ids = var.apps_subnet_ids
+  subnet_ids = var.apps_subnets_ids
   tags = {
     Name = "${var.env}-docdb"
   }
