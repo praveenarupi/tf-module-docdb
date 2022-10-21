@@ -23,7 +23,7 @@ resource "aws_docdb_cluster_parameter_group" "main" {
   description = "${var.env}-docdb"
 }
 
-resource "aws_security_group" "main" {
+resource "aws_security_group" "docdb" {
   name        = "${var.env}-docdb"
   description = "${var.env}-docdb"
   vpc_id      = var.vpc_id
